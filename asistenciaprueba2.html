@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>SISTEMA B1 - Gestión de Asistencia</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        :root { --primary: #e67e22; --dark: #0b0e11; --card: #15191d; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .asistencia-card { background: var(--card); border: 2px solid var(--primary); width: 100%; max-width: 600px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { color: var(--primary); text-align: center; margin: 0 0 20px 0; text-transform: uppercase; }
+        .form-header { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        label { font-size: 11px; color: var(--primary); font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        input, select { padding: 10px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        #subtipo-container { grid-column: span 2; display: none; flex-direction: column; gap: 5px; padding-top: 10px; border-top: 1px solid #333; }
+        .listado-container { margin-top: 20px; max-height: 450px; overflow-y: auto; border: 1px solid #444; border-radius: 8px; background: #000; }
+        .fila-asist { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #222; }
+        .info-bombero b { color: var(--primary); font-size: 10px; text-transform: uppercase; display: block; }
+        .info-bombero div { font-size: 13px; }
+        .btn-check { width: 60px; height: 50px; border-radius: 8px; border: 1px solid #555; background: #333; color: white; font-weight: 900; font-size: 20px; cursor: pointer; }
+        .est-I { background: #27ae60 !important; border-color: #fff; }
+        .est-A { background: #f1c40f !important; color: black !important; border-color: #000; }
+        .est-6 { background: #2980b9 !important; border-color: #fff; }
+        .est-2 { background: #c0392b !important; border-color: #fff; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 8px; cursor: pointer; font-weight: 900; width: 100%; margin-top: 20px; text-transform: uppercase; }
+        .btn-pdf { background: #34495e; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="asistencia-card">
+        <h2>Registro de Salida</h2>
+        <div class="form-header">
+            <div><label>Fecha</label><input type="date" id="fecha-manual"></div>
+            <div><label>Hora</label><input type="time" id="hora-manual"></div>
+            <div style="grid-column: span 2;">
+                <label>Tipo General</label>
+                <select id="tipo-salida" onchange="toggleSubtipo()">
+                    <option value="">-- SELECCIONAR --</option>
+                    <option value="INCENDIO">INCENDIO</option>
+                    <option value="ACCIDENTE">ACCIDENTE</option>
+                    <option value="RESCATE">RESCATE</option>
+                    <option value="SERVICIO ESPECIAL">SERVICIO ESPECIAL</option>
+                </select>
+            </div>
+            <div id="subtipo-container">
+                <label>Especificación</label>
+                <select id="subtipo-incendio">
+                    <option value="VEHICULAR">VEHICULAR</option>
+                    <option value="CASA">CASA</option>
+                    <option value="EDIFICIO">EDIFICIO</option>
+                    <option value="EDIFICIO PUBLICO">EDIFICIO PÚBLICO</option>
+                    <option value="FORESTAL">FORESTAL</option>
+                    <option value="BASURA">BASURA</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="listado-container" id="contenedor-personal">
+            <p id="mensaje-carga" style="text-align:center; padding:20px; color: #888;">Buscando personal en la base de datos...</p>
+        </div>
+
+        <button class="btn-save" onclick="guardarAsistencia()">Guardar Registro</button>
+        <button class="btn-pdf" onclick="descargarPDFMensual()">Descargar PDF Mensual</button>
+    </div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBMNFRm_snxnwtU0sy9-q0zyfBcSzKOtS8",
+        databaseURL: "https://bomberoschascomus90-default-rtdb.firebaseio.com",
+        projectId: "bomberoschascomus90",
+        appId: "1:138882346793:web:b069ff3e6d746d64c6d138"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    let asistenciaActual = {};
+    let personalListado = [];
+
+    function toggleSubtipo() {
+        const tipo = document.getElementById('tipo-salida').value;
+        document.getElementById('subtipo-container').style.display = (tipo === 'INCENDIO') ? 'flex' : 'none';
+    }
+
+    function cargarLista() {
+        db.ref('personal').on('value', snap => {
+            const contenedor = document.getElementById('contenedor-personal');
+            if (!snap.exists()) {
+                contenedor.innerHTML = "<p style='padding:20px;'>No hay personal cargado.</p>";
+                return;
+            }
+
+            personalListado = [];
+            snap.forEach(child => {
+                personalListado.push(child.val());
+            });
+
+            personalListado.sort((a, b) => a.jerarquia - b.jerarquia);
+
+            contenedor.innerHTML = "";
+            personalListado.forEach(p => {
+                asistenciaActual[p.nombre] = "";
+                contenedor.innerHTML += `
+                    <div class="fila-asist">
+                        <div class="info-bombero">
+                            <b>${p.jerarquiaNombre}</b>
+                            <div>${p.nombre}</div>
+                        </div>
+                        <button class="btn-check" onclick="rotarEstado(this, '${p.nombre}')"></button>
+                    </div>`;
+            });
+        });
+    }
+
+    function rotarEstado(btn, nombre) {
+        const estados = ["", "I", "A", "6", "2"];
+        let actual = btn.innerText.trim();
+        let sig = (estados.indexOf(actual) + 1) % estados.length;
+        btn.innerText = estados[sig];
+        btn.className = "btn-check est-" + estados[sig];
+        asistenciaActual[nombre] = estados[sig];
+    }
+
+    function guardarAsistencia() {
+        const fecha = document.getElementById('fecha-manual').value;
+        const hora = document.getElementById('hora-manual').value;
+        const tipoB = document.getElementById('tipo-salida').value;
+        const sub = (tipoB === 'INCENDIO') ? document.getElementById('subtipo-incendio').value : "";
+        
+        if (!tipoB || !fecha) return alert("Faltan datos obligatorios.");
+        const finalTipo = sub ? sub : tipoB;
+        const mesAnio = fecha.substring(0, 7);
+        
+        db.ref('asistencias/' + mesAnio).push({
+            fecha, hora, tipo: finalTipo, personal: asistenciaActual
+        }).then(() => {
+            alert("¡Servicio registrado!");
+            location.reload();
+        });
+    }
+
+    async function descargarPDFMensual() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); 
+        const mesFiltro = document.getElementById('fecha-manual').value.substring(0, 7);
+
+        db.ref('asistencias/' + mesFiltro).once('value', snap => {
+            if(!snap.exists()) return alert("No hay datos cargados.");
+
+            let headers = [["JERARQUÍA", "APELLIDO Y NOMBRE"]];
+            let servicios = [];
+
+            snap.forEach(serv => {
+                const s = serv.val();
+                headers[0].push(s.fecha.split('-')[2] + "/" + s.fecha.split('-')[1]);
+                servicios.push(s);
+            });
+            
+            // Añadimos la columna final de Total
+            headers[0].push("TOTAL (I+A)");
+
+            let rows = [];
+            personalListado.forEach(p => {
+                let nombre = p.nombre;
+                let jerarquia = p.jerarquiaNombre;
+                let fila = [jerarquia, nombre];
+                let contadorIA = 0;
+
+                servicios.forEach(s => {
+                    const estado = s.personal[nombre] || "-";
+                    fila.push(estado);
+                    // Sumamos si es I o A
+                    if (estado === "I" || estado === "A") {
+                        contadorIA++;
+                    }
+                });
+                
+                fila.push(contadorIA.toString()); // Agregamos el total al final de la fila
+                rows.push(fila);
+            });
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text("PLANILLA DE ASISTENCIA MENSUAL - PERÍODO: " + mesFiltro, 14, 12);
+            
+            doc.autoTable({
+                head: headers,
+                body: rows,
+                startY: 25,
+                theme: 'grid',
+                styles: { 
+                    fontSize: 6, 
+                    cellPadding: 0.8, 
+                    textColor: [0, 0, 0], 
+                    lineColor: [0, 0, 0], 
+                    lineWidth: 0.1,
+                    font: "helvetica",
+                    halign: 'center'
+                },
+                headStyles: { 
+                    fillColor: [230, 230, 230], 
+                    textColor: [0, 0, 0], 
+                    fontStyle: 'bold'
+                },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 35, halign: 'left' },
+                    1: { cellWidth: 40, halign: 'left' }
+                },
+                didParseCell: function(data) {
+                    // Resaltar códigos y la columna total
+                    if (data.section === 'body') {
+                        if (data.column.index > 1) {
+                            const val = data.cell.text[0];
+                            if (["I", "A", "6", "2"].includes(val) || data.column.index === headers[0].length - 1) {
+                                data.cell.styles.fontSize = 8;
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    }
+                },
+                didDrawCell: function(data) {
+                    // Rotar texto solo para las columnas de fecha (no para la de Total)
+                    if (data.section === 'head' && data.column.index > 1 && data.column.index < headers[0].length - 1) {
+                        const servIndex = data.column.index - 2;
+                        const tipo = servicios[servIndex].tipo.toUpperCase();
+                        
+                        doc.setFontSize(5);
+                        doc.setFont("helvetica", "bold");
+                        doc.saveGraphicsState();
+                        doc.text(tipo, data.cell.x + 4, data.cell.y - 2, { angle: 90 });
+                        doc.restoreGraphicsState();
+                    }
+                }
+            });
+
+            doc.save(`Asistencia_B1_${mesFiltro}.pdf`);
+        });
+    }
+
+    const ahora = new Date();
+    document.getElementById('fecha-manual').value = ahora.toISOString().split('T')[0];
+    document.getElementById('hora-manual').value = ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12:false});
+    cargarLista();
+</script>
+</body>
+</html>
