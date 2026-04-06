@@ -2,73 +2,124 @@
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA B1 - Gestión de Asistencia</title>
+    
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     
     <style>
-        :root { --primary: #e67e22; --dark: #0b0e11; --card: #15191d; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        .asistencia-card { background: var(--card); border: 2px solid var(--primary); width: 100%; max-width: 600px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h2 { color: var(--primary); text-align: center; margin: 0 0 20px 0; text-transform: uppercase; }
-        .form-header { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        :root { --primary: #e67e22; --dark: #0b0e11; --card: #15191d; --text: #ecf0f1; }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--dark); color: var(--text); 
+            padding: 15px; display: flex; flex-direction: column; align-items: center; margin: 0; 
+        }
+
+        .asistencia-card { 
+            background: var(--card); border: 2px solid var(--primary); 
+            width: 100%; max-width: 650px; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); box-sizing: border-box;
+        }
+
+        h2 { color: var(--primary); text-align: center; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 1px; }
+
+        .form-header { 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; 
+            background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; 
+            border: 1px solid #333; margin-bottom: 20px; 
+        }
+
         label { font-size: 11px; color: var(--primary); font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
-        input, select { padding: 10px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; font-size: 14px; width: 100%; box-sizing: border-box; }
-        #subtipo-container { grid-column: span 2; display: none; flex-direction: column; gap: 5px; padding-top: 10px; border-top: 1px solid #333; }
-        .listado-container { margin-top: 20px; max-height: 450px; overflow-y: auto; border: 1px solid #444; border-radius: 8px; background: #000; }
-        .fila-asist { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #222; }
-        .info-bombero b { color: var(--primary); font-size: 10px; text-transform: uppercase; display: block; }
-        .info-bombero div { font-size: 13px; }
-        .btn-check { width: 60px; height: 50px; border-radius: 8px; border: 1px solid #555; background: #333; color: white; font-weight: 900; font-size: 20px; cursor: pointer; }
-        .est-I { background: #27ae60 !important; border-color: #fff; }
-        .est-A { background: #f1c40f !important; color: black !important; border-color: #000; }
-        .est-6 { background: #2980b9 !important; border-color: #fff; }
-        .est-2 { background: #c0392b !important; border-color: #fff; }
-        .btn-save { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 8px; cursor: pointer; font-weight: 900; width: 100%; margin-top: 20px; text-transform: uppercase; }
-        .btn-pdf { background: #34495e; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+        
+        input, select { 
+            padding: 10px; background: #222; border: 1px solid #444; 
+            color: white; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; 
+        }
+
+        /* Contenedor de lista de personal */
+        .listado-container { 
+            margin-top: 10px; max-height: 500px; overflow-y: auto; 
+            border: 1px solid #444; border-radius: 8px; background: #000; 
+        }
+
+        .fila-asist { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 12px 15px; border-bottom: 1px solid #222; transition: background 0.3s;
+        }
+        .fila-asist:hover { background: #1a1a1a; }
+
+        .info-bombero { flex: 1; margin-right: 10px; }
+        .info-bombero b { color: var(--primary); font-size: 10px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        .info-bombero div { font-size: 14px; font-weight: 500; }
+
+        /* Botonera de 4 estados */
+        .botonera { display: flex; gap: 5px; }
+        
+        .btn-opcion { 
+            width: 42px; height: 42px; border-radius: 6px; border: 1px solid #444; 
+            background: #222; color: #555; font-weight: 900; font-size: 16px; 
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Colores activos por estado */
+        .btn-opcion.active[data-val="I"] { background: #27ae60; color: white; border-color: #fff; }
+        .btn-opcion.active[data-val="A"] { background: #f1c40f; color: black; border-color: #000; }
+        .btn-opcion.active[data-val="6"] { background: #2980b9; color: white; border-color: #fff; }
+        .btn-opcion.active[data-val="2"] { background: #c0392b; color: white; border-color: #fff; }
+
+        /* Botones de acción final */
+        .btn-save { 
+            background: var(--primary); color: white; border: none; padding: 18px; 
+            border-radius: 8px; cursor: pointer; font-weight: 900; width: 100%; 
+            margin-top: 20px; text-transform: uppercase; font-size: 16px; box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+        }
+        .btn-save:active { transform: scale(0.98); }
+
+        .btn-pdf { 
+            background: #34495e; color: white; border: none; padding: 12px; 
+            border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; 
+        }
+
+        /* Scrollbar personalizado */
+        .listado-container::-webkit-scrollbar { width: 8px; }
+        .listado-container::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
     </style>
 </head>
 <body>
 
     <div class="asistencia-card">
-        <h2>Registro de Salida</h2>
+        <h2>Registro de Salida - B1</h2>
+        
         <div class="form-header">
-            <div><label>Fecha</label><input type="date" id="fecha-manual"></div>
-            <div><label>Hora</label><input type="time" id="hora-manual"></div>
+            <div><label>Fecha del Servicio</label><input type="date" id="fecha-manual"></div>
+            <div><label>Hora de Salida</label><input type="time" id="hora-manual"></div>
             <div style="grid-column: span 2;">
-                <label>Tipo General</label>
-                <select id="tipo-salida" onchange="toggleSubtipo()">
-                    <option value="">-- SELECCIONAR --</option>
+                <label>Tipo de Intervención</label>
+                <select id="tipo-salida">
+                    <option value="">-- SELECCIONAR TIPO --</option>
                     <option value="INCENDIO">INCENDIO</option>
-                    <option value="ACCIDENTE">ACCIDENTE</option>
+                    <option value="ACCIDENTE">ACCIDENTE VIAL</option>
                     <option value="RESCATE">RESCATE</option>
                     <option value="SERVICIO ESPECIAL">SERVICIO ESPECIAL</option>
-                </select>
-            </div>
-            <div id="subtipo-container">
-                <label>Especificación</label>
-                <select id="subtipo-incendio">
-                    <option value="VEHICULAR">VEHICULAR</option>
-                    <option value="CASA">CASA</option>
-                    <option value="EDIFICIO">EDIFICIO</option>
-                    <option value="EDIFICIO PUBLICO">EDIFICIO PÚBLICO</option>
-                    <option value="FORESTAL">FORESTAL</option>
-                    <option value="BASURA">BASURA</option>
+                    <option value="CAPACITACION">CAPACITACIÓN</option>
                 </select>
             </div>
         </div>
 
         <div class="listado-container" id="contenedor-personal">
-            <p id="mensaje-carga" style="text-align:center; padding:20px; color: #888;">Buscando personal en la base de datos...</p>
+            <p style="text-align:center; padding:20px; color: #888;">Accediendo a la base de datos de personal...</p>
         </div>
 
         <button class="btn-save" onclick="guardarAsistencia()">Guardar Registro</button>
-        <button class="btn-pdf" onclick="descargarPDFMensual()">Descargar PDF Mensual</button>
+        <button class="btn-pdf" onclick="descargarPDFMensual()">Descargar Planilla PDF</button>
     </div>
 
 <script>
+    // Configuración de tu base de datos Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyBMNFRm_snxnwtU0sy9-q0zyfBcSzKOtS8",
         databaseURL: "https://bomberoschascomus90-default-rtdb.firebaseio.com",
@@ -78,161 +129,147 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     
-    let asistenciaActual = {};
+    let asistenciaActual = {}; 
     let personalListado = [];
 
-    function toggleSubtipo() {
-        const tipo = document.getElementById('tipo-salida').value;
-        document.getElementById('subtipo-container').style.display = (tipo === 'INCENDIO') ? 'flex' : 'none';
-    }
-
+    // Carga la lista de personal y limpia el contenedor correctamente
     function cargarLista() {
         db.ref('personal').on('value', snap => {
             const contenedor = document.getElementById('contenedor-personal');
             if (!snap.exists()) {
-                contenedor.innerHTML = "<p style='padding:20px;'>No hay personal cargado.</p>";
+                contenedor.innerHTML = "<p style='padding:20px;'>No hay personal registrado.</p>";
                 return;
             }
 
+            contenedor.innerHTML = ""; // Limpiamos antes de reconstruir
             personalListado = [];
+            asistenciaActual = {}; 
+
             snap.forEach(child => {
                 personalListado.push(child.val());
             });
 
+            // Orden jerárquico
             personalListado.sort((a, b) => a.jerarquia - b.jerarquia);
 
-            contenedor.innerHTML = "";
             personalListado.forEach(p => {
-                asistenciaActual[p.nombre] = "";
+                asistenciaActual[p.nombre] = ""; // Inicializar vacío para el registro
+                
                 contenedor.innerHTML += `
                     <div class="fila-asist">
                         <div class="info-bombero">
-                            <b>${p.jerarquiaNombre}</b>
+                            <b>${p.jerarquiaNombre || 'BOMBERO'}</b>
                             <div>${p.nombre}</div>
                         </div>
-                        <button class="btn-check" onclick="rotarEstado(this, '${p.nombre}')"></button>
+                        <div class="botonera" data-user="${p.nombre}">
+                            <button class="btn-opcion" data-val="I" onclick="setEstado('${p.nombre}', 'I', this)">I</button>
+                            <button class="btn-opcion" data-val="A" onclick="setEstado('${p.nombre}', 'A', this)">A</button>
+                            <button class="btn-opcion" data-val="6" onclick="setEstado('${p.nombre}', '6', this)">6</button>
+                            <button class="btn-opcion" data-val="2" onclick="setEstado('${p.nombre}', '2', this)">2</button>
+                        </div>
                     </div>`;
             });
         });
     }
 
-    function rotarEstado(btn, nombre) {
-        const estados = ["", "I", "A", "6", "2"];
-        let actual = btn.innerText.trim();
-        let sig = (estados.indexOf(actual) + 1) % estados.length;
-        btn.innerText = estados[sig];
-        btn.className = "btn-check est-" + estados[sig];
-        asistenciaActual[nombre] = estados[sig];
+    // Maneja la selección de botones (activa uno y apaga el resto del mismo bombero)
+    function setEstado(nombre, valor, btn) {
+        const padre = btn.parentElement;
+        const botones = padre.querySelectorAll('.btn-opcion');
+        
+        if (btn.classList.contains('active')) {
+            btn.classList.remove('active');
+            asistenciaActual[nombre] = "";
+        } else {
+            botones.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            asistenciaActual[nombre] = valor;
+        }
     }
 
     function guardarAsistencia() {
         const fecha = document.getElementById('fecha-manual').value;
         const hora = document.getElementById('hora-manual').value;
-        const tipoB = document.getElementById('tipo-salida').value;
-        const sub = (tipoB === 'INCENDIO') ? document.getElementById('subtipo-incendio').value : "";
+        const tipo = document.getElementById('tipo-salida').value;
         
-        if (!tipoB || !fecha) return alert("Faltan datos obligatorios.");
-        const finalTipo = sub ? sub : tipoB;
-        const mesAnio = fecha.substring(0, 7);
+        if (!tipo || !fecha || !hora) return alert("Por favor complete Fecha, Hora y Tipo.");
+        
+        const mesAnio = fecha.substring(0, 7); // Formato YYYY-MM
         
         db.ref('asistencias/' + mesAnio).push({
-            fecha, hora, tipo: finalTipo, personal: asistenciaActual
+            fecha, hora, tipo, personal: asistenciaActual
         }).then(() => {
-            alert("¡Servicio registrado!");
+            alert("SERVICIO GUARDADO CORRECTAMENTE");
             location.reload();
-        });
+        }).catch(err => alert("Error al guardar: " + err));
     }
 
-    async function descargarPDFMensual() {
+    // Generación de PDF Mensual
+async function descargarPDFMensual() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l', 'mm', 'a4'); 
-        const mesFiltro = document.getElementById('fecha-manual').value.substring(0, 7);
+        const fechaInput = document.getElementById('fecha-manual').value;
+        const mesFiltro = fechaInput.substring(0, 7);
 
         db.ref('asistencias/' + mesFiltro).once('value', snap => {
-            if(!snap.exists()) return alert("No hay datos cargados.");
+            if(!snap.exists()) return alert("No hay datos para este mes.");
 
+            // Headers: Fila 1 (Jerarquía y Nombre)
             let headers = [["JERARQUÍA", "APELLIDO Y NOMBRE"]];
             let servicios = [];
 
             snap.forEach(serv => {
                 const s = serv.val();
-                headers[0].push(s.fecha.split('-')[2] + "/" + s.fecha.split('-')[1]);
+                // Ponemos el día en el header
+                headers[0].push(s.fecha.split('-')[2]); 
                 servicios.push(s);
             });
-            
-            // Añadimos la columna final de Total
-            headers[0].push("TOTAL (I+A)");
+            headers[0].push("TOTAL");
 
             let rows = [];
             personalListado.forEach(p => {
-                let nombre = p.nombre;
-                let jerarquia = p.jerarquiaNombre;
-                let fila = [jerarquia, nombre];
+                let fila = [p.jerarquiaNombre, p.nombre];
                 let contadorIA = 0;
-
                 servicios.forEach(s => {
-                    const estado = s.personal[nombre] || "-";
+                    const estado = s.personal[p.nombre] || "-";
                     fila.push(estado);
-                    // Sumamos si es I o A
-                    if (estado === "I" || estado === "A") {
-                        contadorIA++;
-                    }
+                    if (estado === "I" || estado === "A") contadorIA++;
                 });
-                
-                fila.push(contadorIA.toString()); // Agregamos el total al final de la fila
+                fila.push(contadorIA.toString());
                 rows.push(fila);
             });
 
-            doc.setFont("helvetica", "bold");
             doc.setFontSize(14);
-            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
             doc.text("PLANILLA DE ASISTENCIA MENSUAL - PERÍODO: " + mesFiltro, 14, 12);
             
             doc.autoTable({
                 head: headers,
                 body: rows,
-                startY: 25,
+                startY: 25, // Bajamos un poco la tabla para que entre el texto rotado
                 theme: 'grid',
                 styles: { 
-                    fontSize: 6, 
-                    cellPadding: 0.8, 
-                    textColor: [0, 0, 0], 
-                    lineColor: [0, 0, 0], 
-                    lineWidth: 0.1,
-                    font: "helvetica",
-                    halign: 'center'
+                    fontSize: 7, 
+                    halign: 'center', 
+                    cellPadding: 1,
+                    lineColor: [0, 0, 0],
+                    lineWidth: 0.1
                 },
-                headStyles: { 
-                    fillColor: [230, 230, 230], 
-                    textColor: [0, 0, 0], 
-                    fontStyle: 'bold'
-                },
-                columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: 35, halign: 'left' },
-                    1: { cellWidth: 40, halign: 'left' }
-                },
-                didParseCell: function(data) {
-                    // Resaltar códigos y la columna total
-                    if (data.section === 'body') {
-                        if (data.column.index > 1) {
-                            const val = data.cell.text[0];
-                            if (["I", "A", "6", "2"].includes(val) || data.column.index === headers[0].length - 1) {
-                                data.cell.styles.fontSize = 8;
-                                data.cell.styles.fontStyle = 'bold';
-                            }
-                        }
-                    }
+                headStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0] },
+                columnStyles: { 
+                    0: { halign: 'left', cellWidth: 35 }, 
+                    1: { halign: 'left', cellWidth: 40 } 
                 },
                 didDrawCell: function(data) {
-                    // Rotar texto solo para las columnas de fecha (no para la de Total)
+                    // Si es una celda del Header y es una de las columnas de fecha (no las primeras dos ni la última)
                     if (data.section === 'head' && data.column.index > 1 && data.column.index < headers[0].length - 1) {
                         const servIndex = data.column.index - 2;
-                        const tipo = servicios[servIndex].tipo.toUpperCase();
+                        const tipoTexto = servicios[servIndex].tipo.substring(0, 12); // Acortamos si es muy largo
                         
                         doc.setFontSize(5);
-                        doc.setFont("helvetica", "bold");
                         doc.saveGraphicsState();
-                        doc.text(tipo, data.cell.x + 4, data.cell.y - 2, { angle: 90 });
+                        // Rotamos el texto del tipo de salida
+                        doc.text(tipoTexto, data.cell.x + 4, data.cell.y - 2, { angle: 90 });
                         doc.restoreGraphicsState();
                     }
                 }
@@ -242,9 +279,11 @@
         });
     }
 
+    // Inicialización de Fecha y Hora actual
     const ahora = new Date();
     document.getElementById('fecha-manual').value = ahora.toISOString().split('T')[0];
     document.getElementById('hora-manual').value = ahora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12:false});
+    
     cargarLista();
 </script>
 </body>
